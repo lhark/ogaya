@@ -1,0 +1,3 @@
+channels/*
+__pycache__/*
+*.pyc
