@@ -20,7 +20,10 @@ __author__ = "Etienne Nadji <etnadji@eml.cc>"
 # Fonctions =============================================================#
 
 def download(url,target):
-    urllib.request.urlretrieve(url,target)
+    try:
+        urllib.request.urlretrieve(url,target)
+    except ValueError:
+        pass
 
 def get_urls(user,action):
 
