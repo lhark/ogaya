@@ -1,3 +1,4 @@
 channels/*
 __pycache__/*
 *.pyc
+channels.list
