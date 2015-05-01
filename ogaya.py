@@ -42,22 +42,14 @@ class OgayaCLI(cmd.Cmd):
 
         self.videos = []
         self.videos_titles = []
+        self.queue = []
 
-        self.ydl_args = ["-f","43"]
+        self.ydl_args = [
+                ["-f","43"],
+                ["-f","18"]
+        ]
 
         self.cd_status = "@channels"
-
-    def motd(self,loaded=0):
-        self._clear()
-
-        print ("Ogaya\n")
-        print ("OgayaCLI is under GNU GPL license.")
-        print ("Use 'licence' for more information.\n")
-
-        if loaded:
-            print ("Loaded {0} channels".format(loaded))
-
-    def _clear(self): os.system("clear")
 
     def preloop(self):
         if os.path.exists(os.path.realpath("channels.list")):
@@ -89,12 +81,22 @@ class OgayaCLI(cmd.Cmd):
 
             self._update_videos()
 
-            self.motd(loaded)
+            self._motd(loaded)
         else:
-            self.motd()
+            self._motd()
 
     def postloop(self): pass
 
+    def _motd(self,loaded=0):
+        self._clear()
+
+        print ("Ogaya\n")
+        print ("OgayaCLI is under GNU GPL license.")
+        print ("Use 'licence' for more information.\n")
+
+        if loaded:
+            print ("Loaded {0} channels".format(loaded))
+    def _clear(self): os.system("clear")
     def _find_channel(self,s):
         for channel in self.channels:
             if s == channel.alias:
@@ -103,13 +105,11 @@ class OgayaCLI(cmd.Cmd):
                 return channel
 
         return None
-
     def _channel_selected(self):
         if self.cd_status == "@channels":
             return False
         else:
             return True
-
     def _clever_channels(self):
         channels = []
 
@@ -122,7 +122,6 @@ class OgayaCLI(cmd.Cmd):
         channels.sort()
 
         return channels
-
     def _refresh_new(self):
         self.new_videos = {}
 
@@ -137,7 +136,6 @@ class OgayaCLI(cmd.Cmd):
 
                 for video in channel.new_videos:
                     self.new_videos[name].append(video)
-
     def _update_videos(self):
         videos = []
         videos_titles = []
@@ -149,11 +147,23 @@ class OgayaCLI(cmd.Cmd):
 
         self.videos = videos
         self.videos_titles = videos_titles
+    def _download(self,args,url):
+        args = ["youtube-dl"] + args + [url]
+
+        ret = subprocess.call(
+                args,
+                shell=False,
+                stdout=open(os.devnull, 'wb')
+        )
+
+        if ret:
+            return False
+        else:
+            return True
 
     def do_EOF(self, line):
         """Exit"""
         return True
-
     def do_licence(self): pass
 
     def do_exit(self,line):
@@ -161,24 +171,105 @@ class OgayaCLI(cmd.Cmd):
         sys.exit(0)
 
     def do_add(self,line):
-        """Documentation for add"""
-        pass
+        """Add a download in the queue."""
+        video = None
+
+        for vq in self.queue:
+            if v.name == line:
+                print ("This video is already in the queue.")
+                break
+            else:
+                video = v
+                break
+
+        if video:
+            self.queue.append(video)
 
     def do_down(self,line):
-        """Documentation for down"""
-        pass
+        """Download a video"""
 
-        #args = ["youtube-dl"] + self.ydl_args + [video_url]
-        #ret = subprocess.Popen(args,stdout=subprocess.DEVNULL)
-        #print (ret)
+        def _retry_download(url):
+            try:
+                print("New arguments for youtube-dl?")
+                print("'Abort' or CTRL-C to abort.\n")
+                nargs = input("Arguments % ")
 
-    def do_downview(self,line):
-        """Documentation for downview"""
-        pass
+                if nargs.lower() == "abort":
+                    return False
 
-    def do_downadd(self,line):
-        """Documentation for downadd"""
-        pass
+                else:
+                    success = self._download(nargs.split(),url)
+
+                    if success:
+                        print ("'{0}' downloaded.".format(line))
+                    else:
+                        _retry_download(url)
+
+            except KeyboardInterrupt:
+                return False
+        def _try_args_variant(url):
+            success = False
+
+            for args_variant in self.ydl_args:
+                success = self._download(args_variant,url)
+
+                if success:
+                    break
+
+            if success:
+                print ("'{0}' downloaded.".format(line))
+                return True
+
+            else:
+                success = _retry_download(url)
+
+                if not success:
+                    print ("Aborted.")
+                    return False
+
+        if line:
+            url = False
+
+            if self._channel_selected():
+                titles = [v.name for v in self.cd_status.videos]
+
+                if line in titles:
+                    for v in self.cd_status.videos:
+                        if line == v.name:
+                            url = v.url
+                            break
+            else:
+                if line in self.videos_titles:
+                    for v in self.videos_titles:
+                        if line == v.name:
+                            url = v.url
+                            break
+
+            if url:
+                print ("Downloading '{0}'".format(line))
+                _try_args_variant(url)
+
+        else:
+            if self.queue:
+                results = []
+
+                for video in self.queue:
+                    print ("Downloading '{0}'".format(video.name))
+                    success = _try_args_variant(video.url)
+
+                    if success:
+                        results.append(v.name)
+
+                new_queue = []
+
+                for video in self.queue:
+                    if not video.name in results:
+                        new_queue.append(video)
+
+                self.queue = new_queue
+
+            else:
+                print ("No download scheduled.")
 
     def do_refresh(self,line):
         """Refresh a channel or all the channels"""
@@ -260,7 +351,7 @@ class OgayaCLI(cmd.Cmd):
                 completions = self.videos_titles
         else:
             if self._channel_selected():
-                completions = [v.name for v in self.cd_status.videos if v.startswith(text)]
+                completions = [v.name for v in self.cd_status.videos if v.name.startswith(text)]
             else:
                 completions = [v for v in self.videos_titles if v.startswith(text)]
 
@@ -273,6 +364,8 @@ class OgayaCLI(cmd.Cmd):
     def complete_refresh(self, text, line, begidx, endidx):
         return self._complete_channel(text,line,begidx,endidx)
     def complete_down(self, text, line, begidx, endidx):
+        return self._complete_video(text,line,begidx,endidx)
+    def complete_add(self, text, line, begidx, endidx):
         return self._complete_video(text,line,begidx,endidx)
 
 
