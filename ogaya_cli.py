@@ -287,6 +287,28 @@ class OgayaCLI(cmd.Cmd):
 
         self._update_videos()
 
+    def do_desc(self,line):
+        """Print the channel description"""
+
+        if line:
+            c = self._find_channel(line)
+
+            if not c is None:
+                if c.description:
+                    print (
+                        "\n{0}\n".format(
+                            c.description
+                        )
+                    )
+        else:
+            if self._channel_selected():
+                if self.cd_status.description:
+                    print (
+                        "\n{0}\n".format(
+                            self.cd_status.description
+                        )
+                    )
+
     def do_cd(self,line):
         """CD around channels list & channel content"""
 
@@ -359,6 +381,8 @@ class OgayaCLI(cmd.Cmd):
 
         return completions
 
+    def complete_desc(self, text, line, begidx, endidx):
+        return self._complete_channel(text,line,begidx,endidx)
     def complete_cd(self, text, line, begidx, endidx):
         return self._complete_channel(text,line,begidx,endidx)
     def complete_whatsnew(self, text, line, begidx, endidx):

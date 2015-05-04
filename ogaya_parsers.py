@@ -15,6 +15,59 @@ import ogaya_objects as ogobjects
 
 # Classes ===============================================================#
 
+class AboutParser(HTMLParser):
+    """Get channel/user description by parsing channel/user about page."""
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+
+        self.description = []
+        self.is_description = True
+        self.datable = False
+        self.is_p = False
+
+    def get_description(self,html):
+        self.feed(html)
+
+        self.description = " ".join(
+                [
+                    line.strip() 
+                    for line in self.description 
+                    if line.strip()
+                ]
+        )
+
+        return self.description
+
+    def handle_endtag(self, tag):
+        if self.is_description and tag == "div":
+            self.is_description = False
+
+    def handle_data(self, data):
+        if self.is_description:
+            if self.is_p:
+                self.description.append(data)
+
+    def handle_starttag(self, tag, attrs):
+        div_class = "about-description branded-page-box-padding"
+
+        count = 0
+
+        if self.is_description:
+            if tag == "p":
+                self.is_p = True
+            else:
+                self.is_p = False
+        else:
+            if tag == "div":
+                if attrs:
+                    for attr in attrs:
+                        if attr[0] == "class":
+                            if attr[1] == div_class:
+                                count += 1
+                                self.is_description = True
+                                break
+
 class AvatarParser(HTMLParser):
     """Get channel/user avatar by parsing channel/user main page."""
 
@@ -108,6 +161,6 @@ class YTParser(HTMLParser):
 # Fonctions =============================================================#
 # Programme =============================================================#
 
-#if __name__ == "__main__": pass
+#if __name__ == "__main__":
 
 # vim:set shiftwidth=4 softtabstop=4:

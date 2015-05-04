@@ -27,6 +27,31 @@ def download(url,target):
 
 def get_urls(user,action):
 
+    if action == "description":
+        styles = {
+                "old":'https://www.youtube.com/user/{0}/about',
+                "new":'https://www.youtube.com/channel/{0}/about',
+        }
+
+        local_filename = False
+
+        for style in styles:
+            try:
+                page = styles[style].format(user)
+                local_filename,headers = urllib.request.urlretrieve(page)
+
+                if local_filename:
+                    return {
+                            "content":open(local_filename,"r").read(),
+                            "tempfile":local_filename,
+                            "page":page
+                           }
+
+            except urllib.request.HTTPError:
+                pass
+
+        return {}
+
     if action == "videos":
         styles = {
                 "old":'https://www.youtube.com/user/{0}/videos',

@@ -25,6 +25,8 @@ class YoutubeChannel:
         self.username = None
         self.alias = None
 
+        self.description = ""
+
         self.try_init = True
         self.valid = False
 
@@ -83,38 +85,60 @@ class YoutubeChannel:
         else:
             self.update("start")
 
-    def update(self,mode="start",refresh_avatar=True):
-        if not self.username is None:
-            feed = ogutils.get_urls(self.username,"videos")
+    def update(self,mode="start",gui=True):
+        def _add_videos(obj,mode):
+            feed = ogutils.get_urls(obj.username,"videos")
 
             if feed:
                 html = feed["content"]
-                tempfile = feed["tempfile"]
                 page = feed["page"]
+                tempfile = feed["tempfile"]
 
                 parser = ogparsers.YTParser()
 
                 for v in parser.get_videos(html):
                     if mode == "start":
-                        self.videos.append(v)
+                        obj.videos.append(v)
                     elif mode == "refresh":
-                        if not v.url in self.videos_urls:
-                            self.videos.append(v)
-                            self.new_videos.append(v)
+                        if not v.url in obj.videos_urls:
+                            obj.videos.append(v)
+                            obj.new_videos.append(v)
                     else:
                         raise ValueError(
-                                "Invalid YoutubeChannel.update() mode:{0}".format(mode)
+                            "Invalid YoutubeChannel.update() mode:{0}".format(mode)
                         )
 
                 del(parser)
                 os.remove(tempfile)
 
+                success = True
+            else:
+                success = False
+
+            return success,obj
+
+        def _set_description(obj):
+            feed = ogutils.get_urls(obj.username,"description")
+            html = feed["content"]
+
+            aboutparser = ogparsers.AboutParser()
+            description = aboutparser.get_description(html)
+
+            obj.description = description
+
+            return obj
+
+        if not self.username is None:
+            feed,self = _add_videos(self,mode)
+
+            if feed:
                 self.set_videos_urls()
+                self = _set_description(self)
 
                 if mode == "start":
                     self.save_channel_file()
 
-                if refresh_avatar:
+                if gui:
                     pic = ogutils.get_urls(self.username,"avatar")
 
                     if pic:
@@ -125,6 +149,7 @@ class YoutubeChannel:
                         ogutils.download(pic,target)
                     else:
                         self.have_avatar = False
+
                 else:
                     self.have_avatar = False
 
