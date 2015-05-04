@@ -35,8 +35,11 @@ class OgayaCLI(cmd.Cmd):
         exit, add, down, downadd, refresh, cd, ls
     """
 
-    def __init__(self):
+    def __init__(self,paths):
         cmd.Cmd.__init__(self)
+
+        self.paths = paths
+
         self.prompt = "% / "
 
         self.channels = []
@@ -54,10 +57,10 @@ class OgayaCLI(cmd.Cmd):
         self.cd_status = "@channels"
 
     def preloop(self):
-        if os.path.exists(os.path.realpath("channels.list")):
+        if os.path.exists(self.paths["channels_list"]):
             print ("Loading Youtube Channels videos")
 
-            with open(os.path.realpath("channels.list"),"r") as cl:
+            with open(self.paths["channels_list"],"r") as cl:
                 loaded = 0
 
                 for line in cl:
@@ -72,7 +75,8 @@ class OgayaCLI(cmd.Cmd):
                             self.channels.append(
                                     ogobjects.YoutubeChannel(
                                         username=user,
-                                        alias=alias
+                                        alias=alias,
+                                        ogaya_paths=self.paths
                                     )
                             )
                         else:
@@ -399,6 +403,18 @@ class OgayaCLI(cmd.Cmd):
 # Programme =============================================================#
 
 if __name__ == "__main__":
-    ogaya = OgayaCLI().cmdloop()
+    OGAYA_PATHS = {
+        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
+        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin())
+    }
+
+    if not os.path.exists(OGAYA_PATHS["channels_dir"]):
+        os.makedirs(OGAYA_PATHS["channels_dir"])
+
+    if not os.path.exists(OGAYA_PATHS["channels_list"]):
+        with open(OGAYA_PATHS["channels_list"],"w") as cl:
+            cl.write("ARTEplus7")
+
+    ogaya = OgayaCLI(OGAYA_PATHS).cmdloop()
 
 # vim:set shiftwidth=4 softtabstop=4:

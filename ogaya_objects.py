@@ -30,6 +30,8 @@ class YoutubeChannel:
         self.try_init = True
         self.valid = False
 
+        self.ogaya_paths = {}
+
         for key in kwargs:
             if key == "username" or key == "channel":
                 self.username = kwargs[key]
@@ -37,6 +39,8 @@ class YoutubeChannel:
                 self.alias = kwargs[key]
             if key == "try_init":
                 self.try_init = kwargs[key]
+            if key == "ogaya_paths":
+                self.ogaya_paths = kwargs[key]
 
         if self.try_init:
             if self.username is None:
@@ -45,7 +49,13 @@ class YoutubeChannel:
                 self.start_or_refresh()
 
     def save_channel_file(self):
-        channel_file = "channels/{0}.videos".format(self.username)
+        if self.ogaya_paths:
+            channel_file = "{0}{1}.videos".format(
+                    self.ogaya_paths["channels_dir"],
+                    self.username
+            )
+        else:
+            channel_file = "channels/{0}.videos".format(self.username)
 
         if os.path.exists(os.path.realpath(channel_file)):
             os.remove(os.path.realpath(channel_file))
@@ -62,7 +72,13 @@ class YoutubeChannel:
                 self.videos_urls.append(video.url)
 
     def start_or_refresh(self):
-        channel_file = "channels/{0}.videos".format(self.username)
+        if self.ogaya_paths:
+            channel_file = "{0}{1}.videos".format(
+                    self.ogaya_paths["channels_dir"],
+                    self.username
+            )
+        else:
+            channel_file = "channels/{0}.videos".format(self.username)
 
         if os.path.exists(channel_file):
             with open(channel_file,"r") as cf:
@@ -144,7 +160,17 @@ class YoutubeChannel:
                     if pic:
                         self.have_avatar = True
 
-                        target = "channels/{0}.{1}".format(self.username,pic.split(".")[-1])
+                        if self.ogaya_paths:
+                            target = "{0}{1}.{2}".format(
+                                    self.ogaya_paths["channels_dir"],
+                                    self.username,
+                                    pic.split(".")[-1]
+                            )
+                        else:
+                            target = "channels/{0}.{1}".format(
+                                    self.username,
+                                    pic.split(".")[-1]
+                            )
 
                         ogutils.download(pic,target)
                     else:
@@ -158,7 +184,11 @@ class YoutubeChannel:
             else:
                 self.valid = False
 
-                print ("This channel/user doesn't exist.")
+                print (
+                        "This channel/user '{0}' doesn't exist.".format(
+                            self.username
+                        )
+                )
 
 class YoutubeVideo:
     def __init__(self,**kwargs):
