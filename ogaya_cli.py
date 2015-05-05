@@ -80,7 +80,12 @@ class OgayaCLI(cmd.Cmd):
                                     )
                             )
                         else:
-                            self.channels.append(ogobjects.YoutubeChannel(username=line))
+                            self.channels.append(
+                                    ogobjects.YoutubeChannel(
+                                        username=line,
+                                        ogaya_paths=self.paths
+                                    )
+                            )
 
                         loaded += 1
                         print ("Loaded: {0}".format(loaded))
@@ -102,7 +107,9 @@ class OgayaCLI(cmd.Cmd):
 
         if loaded:
             print ("Loaded {0} channels".format(loaded))
+
     def _clear(self): os.system("clear")
+
     def _find_channel(self,s):
         for channel in self.channels:
             if s == channel.alias:
@@ -111,11 +118,13 @@ class OgayaCLI(cmd.Cmd):
                 return channel
 
         return None
+
     def _channel_selected(self):
         if self.cd_status == "@channels":
             return False
         else:
             return True
+
     def _clever_channels(self):
         channels = []
 
@@ -128,6 +137,7 @@ class OgayaCLI(cmd.Cmd):
         channels.sort()
 
         return channels
+
     def _refresh_new(self):
         self.new_videos = {}
 
@@ -142,6 +152,7 @@ class OgayaCLI(cmd.Cmd):
 
                 for video in channel.new_videos:
                     self.new_videos[name].append(video)
+
     def _update_videos(self):
         videos = []
         videos_titles = []
@@ -153,6 +164,7 @@ class OgayaCLI(cmd.Cmd):
 
         self.videos = videos
         self.videos_titles = videos_titles
+
     def _download(self,args,url):
         args = ["youtube-dl"] + args + [url]
 

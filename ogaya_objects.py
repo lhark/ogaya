@@ -48,6 +48,9 @@ class YoutubeChannel:
             else:
                 self.start_or_refresh()
 
+    def __str__(self):
+        return "{0} channel".format(self.username)
+
     def save_channel_file(self):
         if self.ogaya_paths:
             channel_file = "{0}{1}.videos".format(
@@ -87,6 +90,7 @@ class YoutubeChannel:
 
                     if not line.startswith("#"):
                         sline = line.split("|")
+
 
                         self.videos.append(
                                 YoutubeVideo(
