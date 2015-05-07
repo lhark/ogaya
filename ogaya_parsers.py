@@ -147,6 +147,9 @@ class YTParser(HTMLParser):
                                 else:
                                     self.wait_link = False
 
+                            if attr[0] == "title":
+                                self.current_video.name = attr[1]
+
     def handle_endtag(self, tag):
         if tag in ["div","h3","a"]:
             if tag == "a" and self.wait_link:
@@ -156,7 +159,10 @@ class YTParser(HTMLParser):
 
     def handle_data(self, data):
         if self.wait_link:
-            self.current_video.name = data
+            if self.current_video.name is None:
+                self.current_video.name = data
+            else:
+                self.current_video.name += "'{0}".format(data)
 
 # Fonctions =============================================================#
 # Programme =============================================================#
