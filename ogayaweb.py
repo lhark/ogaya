@@ -14,8 +14,8 @@ Google account.
 
 import os
 import sys
-import cmd
-import subprocess
+
+import webbrowser
 
 import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
@@ -69,32 +69,36 @@ class HTMLRender:
 
             if name:
                 if avatar:
-                    case = '<section><h3>{0}</h3><div class="avatar"><a href="{1}"><img src="{2}" /></a></div></section>'.format(
+                    case = '\t\t\t<section><h3>{0}</h3><div class="avatar"><a href="{1}"><img src="{2}" /></a></div></section>\n'.format(
                                 name,
                                 channel_file,
                                 avatar_path
                             )
                 else:
-                    case = '<section><h3><a href="{1}">{0}</a></h3></section>'.format(
+                    case = '\t\t\t<section><h3><a href="{1}">{0}</a></h3></section>\n'.format(
                                 name,
                                 channel_file
                             )
+
+                return case
             else:
                 return ''
 
-        head = """<!DOCTYPE html>
-<html>
-    <head>
-	<meta charset=utf-8 />
-	<title>Ogaya</title>
-	<link rel="stylesheet" type="text/css" media="screen" href="grid.css" />
-    </head>
+        head = ''
+        for l in [
+                '<!DOCTYPE html>\n',
+                '<html>\n',
+                '\t<head>',
+                '\t\t<meta charset=utf-8 />',
+                '\t\t<title>Ogaya</title>',
+                '\t\t<link rel="stylesheet" type="text/css" media="screen" href="grid.css" />',
+                '\t</head>',
+                '\t<body>',
+                '\t\t<header><h1>Ogaya</h1></header>',
+                '\t\t<article>']:
+            head += "{0}\n".format(l)
 
-    <body>
-        <header><h1>Ogaya</h1></header>
-        <article>"""
-
-        tail = '        </article>\n    </body>\n</html>'
+        tail = '\t\t</article>\n\t</body>\n</html>'
 
         index_file = "{0}index.html".format(self.paths["web_dir"])
 
@@ -119,32 +123,32 @@ class HTMLRender:
     </head>
 
     <body>
-        <header><h1><a href="index.html">Ogaya</a></h1></header>
-        <article>"""
+        <header><a href="index.html"><h1>Ogaya</h1></a></header>
+        """
 
-        tail = '        </article>\n    </body>\n</html>'
+        tail = '\n    </body>\n</html>'
 
         channel_file = "{0}{1}.html".format(
-                paths["web_dir"],
+                self.paths["web_dir"],
                 channel.username
         )
 
         with open(channel_file,"w") as cf:
             cf.write(head)
 
-            cf.write("<section>")
-            cf.write("<ol>")
+            cf.write("<article>\n")
+            cf.write("<ol>\n")
 
             for video in channel.videos:
                 cf.write(
-                    '<li><a href="{0}">{1}</a></li>'.format(
+                    '<li><a href="{0}">{1}</a></li>\n'.format(
                         video.url,
                         video.name
                     )
                 )
 
-            cf.write("</ol>")
-            cf.write("</section>")
+            cf.write("</ol>\n")
+            cf.write("</article>\n")
 
             cf.write(tail)
 
@@ -157,15 +161,20 @@ class HTMLRender:
             self.successful = []
 
             for channel in self.channels:
-                rc = self._render_channel(self,channel)
+                rc = self._render_channel(channel)
 
                 if rc:
                     self.successful.append(channel)
 
             if self.successful:
                 self._render_index()
+
+                return True
+
             else:
                 self._clean_up()
+
+                return False
 
         else:
             self.update_channels()
@@ -239,7 +248,13 @@ if __name__ == "__main__":
     ogaya = HTMLRender(OGAYA_PATHS)
     s = ogaya.update_channels()
 
-    for c in s:
-        print (c.videos)
+    success = ogaya.render()
+
+    if success:
+        try:
+            view = input("Press ENTER to open ogaweb page or CTRL-C to cancel")
+            webbrowser.open("{0}index.html".format(OGAYA_PATHS["web_dir"]))
+        except KeyboardInterrupt:
+            sys.exit(0)
 
 # vim:set shiftwidth=4 softtabstop=4:
