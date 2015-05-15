@@ -370,9 +370,6 @@ class OgayaCLI(cmd.Cmd):
 
                                 thrds[-1].start()
 
-            #for t in thrds:
-                #t.start()
-
             loaded = 0
 
             for t in thrds:
@@ -599,6 +596,11 @@ class OgayaCLI(cmd.Cmd):
                 c.start_or_refresh()
         else:
             for channel in self.channels:
+                if channel.alias:
+                    print ("Refresh",channel.alias)
+                else:
+                    print ("Refresh",channel.name)
+
                 channel.start_or_refresh()
 
         self._update_videos()
