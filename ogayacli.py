@@ -17,6 +17,8 @@ import sys
 import cmd
 import subprocess
 
+from threading import Thread, RLock
+
 import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
 import ogaya_utils as ogutils
@@ -263,6 +265,32 @@ def columnize(array, displaywidth=80, colsep = '  ',
 
 # Classes ===============================================================#
 
+class ChannelThread(Thread):
+    def __init__(self, lock, username, paths, alias=False):
+        Thread.__init__(self)
+
+        self.lock = lock
+
+        self.username = username
+        self.paths = paths
+        self.alias = alias
+
+        self.channel = None
+
+    def run(self):
+        with self.lock:
+            if self.alias:
+                self.channel = ogobjects.YoutubeChannel(
+                        username=self.username,
+                        alias=self.alias,
+                        ogaya_paths=self.paths
+                )
+            else:
+                self.channel = ogobjects.YoutubeChannel(
+                        username=self.username,
+                        ogaya_paths=self.paths
+                )
+
 class OgayaCLI(cmd.Cmd):
     """
     OgayaCLI shell.
@@ -296,35 +324,71 @@ class OgayaCLI(cmd.Cmd):
         if os.path.exists(self.paths["channels_list"]):
             print ("Loading Youtube Channels videos")
 
+            load_lock = RLock()
+
+            thrds = []
+
             with open(self.paths["channels_list"],"r") as cl:
-                loaded = 0
+
+                total = 0
 
                 for line in cl:
-                    line = line.rstrip()
+                    if not line.startswith("#"):
+                        total += 1
+                        line = line.rstrip()
 
-                    if not line in self.channels_ids:
                         if "|" in line:
                             sline = line.split("|")
 
-                            user,alias = sline[0],sline[1]
+                            user, alias = sline[0], sline[1]
 
-                            self.channels.append(
-                                    ogobjects.YoutubeChannel(
-                                        username=user,
-                                        alias=alias,
-                                        ogaya_paths=self.paths
-                                    )
-                            )
+                            if not user in self.channels_ids:
+                                self.channels_ids.append(user)
+
+                                thrds.append(
+                                        ChannelThread(
+                                            load_lock,
+                                            user,
+                                            self.paths,
+                                            alias
+                                        )
+                                )
+
+                                thrds[-1].start()
+
                         else:
-                            self.channels.append(
-                                    ogobjects.YoutubeChannel(
-                                        username=line,
-                                        ogaya_paths=self.paths
-                                    )
-                            )
+                            if not line in self.channels_ids:
+                                self.channels_ids.append(line)
 
-                        loaded += 1
-                        print ("Loaded: {0}".format(loaded))
+                                thrds.append(
+                                        ChannelThread(
+                                            load_lock,
+                                            line,
+                                            self.paths
+                                        )
+                                )
+
+                                thrds[-1].start()
+
+            #for t in thrds:
+                #t.start()
+
+            loaded = 0
+
+            for t in thrds:
+                t.join()
+
+                loaded += 1
+
+                align = int(len(str(total)) - len(str(loaded))) * "0"
+
+                if t.alias:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.alias))
+                else:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.username))
+
+            for t in thrds:
+                self.channels.append(t.channel)
 
             self._update_videos()
 
