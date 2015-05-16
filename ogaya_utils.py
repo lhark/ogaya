@@ -16,8 +16,14 @@ import ogaya_parsers as ogparsers
 
 __author__ = "Etienne Nadji <etnadji@eml.cc>"
 
-# Classes ===============================================================#
 # Fonctions =============================================================#
+
+def get_ogaya_paths():
+    return {
+        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
+        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
+        "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
+    }
 
 def download(url,target):
     try:
@@ -103,9 +109,4 @@ def get_urls(user,action):
 
         return False
 
-# Programme =============================================================#
-
-#if __name__ == "__main__": pass
-
 # vim:set shiftwidth=4 softtabstop=4:
-

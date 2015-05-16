@@ -1,15 +1,41 @@
 #!/usr/bin/python3
 # -*- coding:Utf-8 -*-
 
+"""
+Test file for Ogaya Headless.
+
+Replace TEST_DIR with your own test folder.
+"""
+
 import os
+import sys
 
 import ogayah as headless
 
+#--- Configuration -------------------------------------------------------------
+
+TEST_DIR = "/home/etienne/GIT/Mes dépôts/ogaya/tests"
+
 OGAYA_PATHS = {
-    "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-    "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
-    "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
+    "channels_dir":"{0}/channels/".format(TEST_DIR),
+    "db":"{0}/data.db".format(TEST_DIR)
 }
+
+#--- Cleaning things before testing and setting up -----------------------------
+
+os.remove(OGAYA_PATHS["db"])
+
+if not os.path.exists(OGAYA_PATHS["channels_dir"]):
+    os.makedirs(OGAYA_PATHS["channels_dir"])
+
+#--- Make a new database -------------------------------------------------------
+
+headless.new_database(OGAYA_PATHS["db"])
+
+try:
+    headless.new_database(OGAYA_PATHS["db"])
+except FileExistsError:
+    print ("OK - Database already exists")
 
 #--- Adding channel ------------------------------------------------------------
 
@@ -26,7 +52,7 @@ try:
         paths=OGAYA_PATHS
     )
 except headless.ChannelAlreadyInDatabase:
-    print ("Channel already in the database")
+    print ("OK - Channel already in the database")
 
 #--- Updating channel ----------------------------------------------------------
 

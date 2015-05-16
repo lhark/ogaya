@@ -7,7 +7,10 @@ Ogaya headless interface
 Communicate with Ogaya database.
 
 Usage:
-    ogayah add_channel [<channel_id>] [--alias=<channel_alias>]
+    ogayah add_channel <channel_id> [--alias=<channel_alias>]
+    ogayah update_channel <channel_id>
+    ogayah remove_channel <channel_id>
+    ogayah new_database [--path=<arbitrary_path>] [--force]
 
 Options:
   -h --help       Show this screen.
@@ -26,7 +29,7 @@ from docopt import docopt
 
 #import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
-#import ogaya_utils as ogutils
+import ogaya_utils as ogutils
 
 # Variables globales ====================================================#
 
@@ -45,6 +48,8 @@ class ChannelNotInDatabase(Exception):
 # Utility functions =====================================================#
 
 def _db_has_channel(channel,db):
+    """Check if the channel channel is in the Ogaya database db"""
+
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
 
@@ -64,6 +69,56 @@ def _db_has_channel(channel,db):
         return False
 
 # Fonctions =============================================================#
+
+def new_database(path):
+    """
+    Make a empty Ogaya Database.
+
+    Arguments:
+        path (string) Path of the new database.
+
+       If  you are  not testing  things,  it is  a  good idea  to get
+       Ogaya standard paths with
+
+            paths_dict = ogaya_utils.get_ogaya_paths()
+
+       and use paths_dict["db"] as path argument.
+
+    Exceptions:
+
+        (OSError.)FileExistsError (python builtin) if the database path
+        match an existing file.
+
+    Examples:
+        new_database("/home/foobar/test.db")
+    """
+
+    path = os.path.realpath(path)
+
+    print ("path:",path)
+
+    if os.path.exists(path):
+        raise FileExistsError()
+
+    else:
+        conn = sqlite3.connect(path)
+        cursor = conn.cursor()
+
+        cursor.execute(
+            '''CREATE TABLE Channel (Username text, Alias text, Description text);'''
+        )
+        conn.commit()
+
+        cursor.execute(
+            '''CREATE TABLE Videos (Url text, Name text, Description text, Channel text);'''
+        )
+
+        conn.commit()
+
+        conn.close()
+
+        return True
+
 
 def remove_channel(**kwargs):
     """
@@ -98,6 +153,7 @@ def remove_channel(**kwargs):
                 channel="UCsqvprYnU8J8K449VAQZhsQ",
             )
     """
+
     is_cli = False
     paths = {}
 
@@ -146,6 +202,7 @@ def remove_channel(**kwargs):
     else:
         return False
 
+
 def update_channel(**kwargs):
     """
     Update a channel.
@@ -179,6 +236,7 @@ def update_channel(**kwargs):
                 channel="UCsqvprYnU8J8K449VAQZhsQ",
             )
     """
+
     is_cli = False
     paths = {}
 
@@ -307,22 +365,50 @@ def add_channel(**kwargs):
 # Programme =============================================================#
 
 if __name__ == "__main__":
-    OGAYA_PATHS = {
-        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
-        "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
-    }
+    OGAYA_PATHS = ogutils.get_ogaya_paths()
 
     arguments = docopt(__doc__, version='0.1')
 
     CURDIR = "{0}{1}".format(os.path.realpath(os.curdir),os.sep)
 
-    for arg in ["add_channel"]:
+    for arg in ["add_channel","remove_channel","update_channel","new_database"]:
         if arguments[arg]:
             operation,valid = arg,True
 
     if valid:
         retcode = 0
+
+        #--- Remove a channel --------------------------------------------------
+
+        if operation == "remove_channel":
+            if arguments["<channel_id>"]:
+                try:
+                    remove_channel(
+                        cli=True,
+                        channel=arguments["<channel_id>"]
+                    )
+                except ChannelNotInDatabase:
+                    print ("Channel was not in the database")
+            else:
+                print ("No channel ID given!")
+                retcode = 1
+
+        #--- Update a channel --------------------------------------------------
+
+        if operation == "update_channel":
+            if arguments["<channel_id>"]:
+                try:
+                    update_channel(
+                        cli=True,
+                        channel=arguments["<channel_id>"]
+                    )
+                except ChannelNotInDatabase:
+                    print ("Channel was not in the database")
+            else:
+                print ("No channel ID given!")
+                retcode = 1
+
+        #--- Add a channel -----------------------------------------------------
 
         if operation == "add_channel":
 
@@ -333,7 +419,7 @@ if __name__ == "__main__":
                     alias = arguments["--alias"]
 
                 try:
-                    add_new_channel(
+                    add_channel(
                         cli=True,
                         channel=arguments["<channel_id>"],
                         alias=alias
@@ -344,6 +430,53 @@ if __name__ == "__main__":
             else:
                 print ("No channel ID given!")
                 retcode = 1
+
+        #--- Make a new database -----------------------------------------------
+
+        if operation == "new_database":
+
+            if arguments["--path"] is None:
+                path = OGAYA_PATHS["db"]
+            else:
+                path = arguments["--path"]
+
+            path = os.path.realpath(path)
+
+            if arguments["--force"]:
+                force = True
+            else:
+                force = False
+
+            if os.path.exists(path):
+                if force:
+                    os.remove(path)
+                    new_database(path)
+
+                else:
+                    print ("File {0} already exists. Erase it and make new database?")
+
+                    try:
+                        done = False
+                        while not done:
+                            choice = input("yes/no ? ")
+
+                            if choice:
+                                choice = choice.lower()
+
+                                if choice[0] in ["y","n"]:
+                                    if choice.startswith("y"):
+                                        os.remove(path)
+                                        new_database(path)
+
+                                    done = True
+
+                    except KeyboardInterrupt:
+                        pass
+
+            else:
+                new_database(path)
+
+        #-----------------------------------------------------------------------
 
     else:
         retcode = 1

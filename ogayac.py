@@ -26,6 +26,7 @@ from columnize import *
 import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
 import ogaya_utils as ogutils
+import ogayah as ogheadless
 
 # Variables globales ====================================================#
 
@@ -167,7 +168,7 @@ class OgayaCLI(cmd.Cmd):
             conn.commit()
 
             c.execute(
-                '''CREATE TABLE Channel (Url text, Name text, Description text, Channel text);'''
+                '''CREATE TABLE Videos (Url text, Name text, Description text, Channel text);'''
             )
 
             conn.commit()
@@ -502,18 +503,14 @@ class OgayaCLI(cmd.Cmd):
 # Programme =============================================================#
 
 if __name__ == "__main__":
-    OGAYA_PATHS = {
-        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
-        "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
-    }
+    OGAYA_PATHS = ogutils.get_ogaya_paths()
 
     if not os.path.exists(OGAYA_PATHS["channels_dir"]):
         os.makedirs(OGAYA_PATHS["channels_dir"])
 
-    if not os.path.exists(OGAYA_PATHS["channels_list"]):
-        with open(OGAYA_PATHS["channels_list"],"w") as cl:
-            cl.write("ARTEplus7")
+    #if not os.path.exists(OGAYA_PATHS["channels_list"]):
+        #with open(OGAYA_PATHS["channels_list"],"w") as cl:
+            #cl.write("ARTEplus7")
 
     ogaya = OgayaCLI(OGAYA_PATHS).cmdloop()
 
