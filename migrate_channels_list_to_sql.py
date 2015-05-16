@@ -6,8 +6,8 @@ import sqlite3
 
 if __name__ == "__main__":
 
-    channels     = "/home/{0}/.config/ogaya/channels.list".format(os.getlogin())
-    db           = "/home/{0}/.config/ogaya/data.db".format(os.getlogin())
+    db = "/home/{0}/.config/ogaya/data.db".format(os.getlogin())
+    channels = "/home/{0}/.config/ogaya/channels.list".format(os.getlogin())
     channels_dir = "/home/{0}/.config/ogaya/channels/".format(os.getlogin())
 
     conn = sqlite3.connect(db)
