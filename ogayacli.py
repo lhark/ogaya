@@ -17,7 +17,11 @@ import sys
 import cmd
 import subprocess
 
+import sqlite3
+
 from threading import Thread, RLock
+
+from columnize import *
 
 import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
@@ -27,269 +31,62 @@ import ogaya_utils as ogutils
 
 __author__ = "Etienne Nadji <etnadji@eml.cc>"
 
-# Columnize package =====================================================#
-# Copyright (C) 2008-2010, 2013 Rocky Bernstein <rocky@gnu.org>.'''
-# License : Python Software Foundation License',
-
-def computed_displaywidth():
-    '''Figure out a reasonable default with. Use os.environ['COLUMNS'] if possible,
-    and failing that use 80.
-    '''
-    width=80
-    if 'COLUMNS' in os.environ:
-        try: 
-            width = int(os.environ['COLUMNS'])
-        except:
-            pass
-        pass
-    return width
-
-default_opts = {
-    'arrange_array'    : False,  # Check if file has changed since last time
-    'arrange_vertical' : True,  
-    'array_prefix'     : '',
-    'array_suffix'     : '',
-    'colfmt'           : None,
-    'colsep'           : '  ',
-    'displaywidth'     : computed_displaywidth,
-    'lineprefix'       : '',
-    'linesuffix'       : "\n",
-    'ljust'            : None,
-    'term_adjust'      : False
-    }
-
-def get_option(key, options):
-    global default_opts
-    if key not in options:
-        return default_opts.get(key)
-    else:
-        return options[key]
-    return None # Not reached
-
-def columnize(array, displaywidth=80, colsep = '  ', 
-              arrange_vertical=True, ljust=True, lineprefix='',
-              opts={}):
-    """Return a list of strings as a compact set of columns arranged 
-    horizontally or vertically.
-
-    For example, for a line width of 4 characters (arranged vertically):
-        ['1', '2,', '3', '4'] => '1  3\n2  4\n'
-
-    or arranged horizontally:
-        ['1', '2,', '3', '4'] => '1  2\n3  4\n'
-
-    Each column is only as wide as necessary.  By default, columns are
-    separated by two spaces - one was not legible enough. Set "colsep"
-    to adjust the string separate columns. Set `displaywidth' to set
-    the line width. 
-
-    Normally, consecutive items go down from the top to bottom from
-    the left-most column to the right-most. If "arrange_vertical" is
-    set false, consecutive items will go across, left to right, top to
-    bottom."""
-    if not isinstance(array, list) and not isinstance(array, tuple): 
-        raise TypeError((
-            'array needs to be an instance of a list or a tuple'))
-
-    o = {}
-    if len(opts.keys()) > 0:
-        for key in default_opts.keys():
-            o[key] = get_option(key, opts)
-            pass
-        if o['arrange_array']:
-            o['array_prefix'] = '['
-            o['lineprefix']   = ' '
-            o['linesuffix']   = ",\n"
-            o['array_suffix'] = "]\n"
-            o['colsep']       = ', '
-            o['arrange_vertical'] = False
-            pass
-
-    else:
-        o = default_opts.copy()
-        o['displaywidth']     = displaywidth
-        o['colsep']           = colsep
-        o['arrange_vertical'] = arrange_vertical
-        o['ljust']            = ljust
-        o['lineprefix']       = lineprefix
-        pass
-
-    # if o['ljust'] is None:
-    #     o['ljust'] = !(list.all?{|datum| datum.kind_of?(Numeric)})
-    #     pass
-
-    if o['colfmt']:
-        array = [(o['colfmt'] % i) for i in array]
-    else:
-        array = [str(i) for i in array]
-        pass
-
-    # Some degenerate cases
-    size = len(array)
-    if 0 == size: 
-        return "<empty>\n"
-    elif size == 1:
-        return '%s%s%s\n' % (o['array_prefix'], str(array[0]),
-                             o['array_suffix'])
-
-    if o['displaywidth'] - len(o['lineprefix']) < 4:
-        o['displaywidth'] = len(o['lineprefix']) + 4
-    else:
-        o['displaywidth'] -= len(o['lineprefix'])
-        pass
-
-    o['displaywidth'] = max(4, o['displaywidth'] - len(o['lineprefix']))
-    if o['arrange_vertical']:
-        array_index = lambda nrows, row, col: nrows*col + row
-        # Try every row count from 1 upwards
-        for nrows in range(1, size):
-            ncols = (size+nrows-1) // nrows
-            colwidths = []
-            totwidth = -len(o['colsep'])
-            for col in range(ncols):
-                # get max column width for this column
-                colwidth = 0
-                for row in range(nrows):
-                    i = array_index(nrows, row, col)
-                    if i >= size: break
-                    x = array[i]
-                    colwidth = max(colwidth, len(x))
-                    pass
-                colwidths.append(colwidth)
-                totwidth += colwidth + len(o['colsep'])
-                if totwidth > o['displaywidth']: 
-                    break
-                pass
-            if totwidth <= o['displaywidth']: 
-                break
-            pass
-        # The smallest number of rows computed and the
-        # max widths for each column has been obtained.
-        # Now we just have to format each of the
-        # rows.
-        s = ''
-        for row in range(nrows):
-            texts = []
-            for col in range(ncols):
-                i = row + nrows*col
-                if i >= size:
-                    x = ""
-                else:
-                    x = array[i]
-                texts.append(x)
-            while texts and not texts[-1]:
-                del texts[-1]
-            for col in range(len(texts)):
-                if o['ljust']:
-                    texts[col] = texts[col].ljust(colwidths[col])
-                else:
-                    texts[col] = texts[col].rjust(colwidths[col])
-                    pass
-                pass
-            s += "%s%s%s" % (o['lineprefix'], str(o['colsep'].join(texts)),
-                             o['linesuffix'])
-            pass
-        return s
-    else:
-        array_index = lambda ncols, row, col: ncols*(row-1) + col
-        # Try every column count from size downwards
-        colwidths = []
-        for ncols in range(size, 0, -1):
-            # Try every row count from 1 upwards
-            min_rows = (size+ncols-1) // ncols
-            for nrows in range(min_rows, size):
-                rounded_size = nrows * ncols
-                colwidths = []
-                totwidth  = -len(o['colsep'])
-                for col in range(ncols):
-                    # get max column width for this column
-                    colwidth  = 0
-                    for row in range(1, nrows+1):
-                        i = array_index(ncols, row, col)
-                        if i >= rounded_size: break
-                        elif i < size:
-                            x = array[i]
-                            colwidth = max(colwidth, len(x))
-                            pass
-                        pass
-                    colwidths.append(colwidth)
-                    totwidth += colwidth + len(o['colsep'])
-                    if totwidth >= o['displaywidth']: 
-                        break
-                    pass
-                if totwidth <= o['displaywidth'] and i >= rounded_size-1:
-                    # Found the right nrows and ncols
-                    nrows  = row
-                    break
-                elif totwidth >= o['displaywidth']:
-                    # Need to reduce ncols
-                    break
-                pass
-            if totwidth <= o['displaywidth'] and i >= rounded_size-1:
-                break
-            pass
-        # The smallest number of rows computed and the
-        # max widths for each column has been obtained.
-        # Now we just have to format each of the
-        # rows.
-        s = ''
-        if len(o['array_prefix']) != 0:
-            prefix = o['array_prefix']
-        else:
-            prefix = o['lineprefix'] 
-            pass
-        for row in range(1, nrows+1):
-            texts = []
-            for col in range(ncols):
-                i = array_index(ncols, row, col)
-                if i >= size:
-                    break
-                else: x = array[i]
-                texts.append(x)
-                pass
-            for col in range(len(texts)):
-                if o['ljust']:
-                    texts[col] = texts[col].ljust(colwidths[col])
-                else:
-                    texts[col] = texts[col].rjust(colwidths[col])
-                    pass
-                pass
-            s += "%s%s%s" % (prefix, str(o['colsep'].join(texts)),
-                             o['linesuffix'])
-            prefix = o['lineprefix']
-            pass
-        s += o['array_suffix']
-        return s
-    pass
-#========================================================================#
-
 # Classes ===============================================================#
 
 class ChannelThread(Thread):
-    def __init__(self, lock, username, paths, alias=False):
+    def __init__(self, **kwargs):
         Thread.__init__(self)
 
-        self.lock = lock
+        self.username = ''
+        self.alias = ''
+        self.description = ''
 
-        self.username = username
-        self.paths = paths
-        self.alias = alias
+        self.paths = {}
+        self.lock = None
 
         self.channel = None
 
+        for key in kwargs:
+            if key == "lock":
+                self.lock = kwargs[key]
+
+            if key == "username":
+                self.username = kwargs[key]
+
+            if key == "alias":
+                self.alias = kwargs[key]
+
+            if key == "description":
+                self.description = kwargs[key]
+
+            if key == "paths":
+                self.paths = kwargs[key]
+
     def run(self):
         with self.lock:
-            if self.alias:
-                self.channel = ogobjects.YoutubeChannel(
-                        username=self.username,
-                        alias=self.alias,
-                        ogaya_paths=self.paths
-                )
-            else:
-                self.channel = ogobjects.YoutubeChannel(
-                        username=self.username,
-                        ogaya_paths=self.paths
-                )
+            self.channel = ogobjects.YoutubeChannel(
+                    username=self.username,
+                    alias=self.alias,
+                    description=self.description,
+                    ogaya_paths=self.paths,
+                    try_init=False
+            )
+
+            self.channel.start_or_refresh_SQL(False)
+
+    #def run(self):
+        #with self.lock:
+            #if self.alias:
+                #self.channel = ogobjects.YoutubeChannel(
+                        #username=self.username,
+                        #alias=self.alias,
+                        #ogaya_paths=self.paths
+                #)
+            #else:
+                #self.channel = ogobjects.YoutubeChannel(
+                        #username=self.username,
+                        #ogaya_paths=self.paths
+                #)
 
 class OgayaCLI(cmd.Cmd):
     """
@@ -321,6 +118,85 @@ class OgayaCLI(cmd.Cmd):
         self.cd_status = "@channels"
 
     def preloop(self):
+
+        db = self.paths["db"]
+
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+
+        if os.path.exists(db):
+            c.execute("SELECT * FROM Channel")
+            cln = c.fetchall()
+
+            channels = [
+                {"username":cn[0],"alias":cn[1],"description":cn[2]} for cn in cln
+            ]
+            total = len(channels)
+
+            load_lock = RLock()
+
+            thrds = []
+
+
+            for channel in channels:
+                if not channel["username"] in self.channels_ids:
+                    self.channels_ids.append(channel["username"])
+
+                    thrds.append(
+                            ChannelThread(
+                                lock=load_lock,
+                                username=channel["username"],
+                                paths=self.paths,
+                                alias=channel["alias"],
+                                description=channel["description"]
+                            )
+                    )
+
+                    thrds[-1].start()
+
+            loaded = 0
+
+            for t in thrds:
+                t.join()
+
+                loaded += 1
+
+                align = int(len(str(total)) - len(str(loaded))) * "0"
+
+                if t.alias:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.alias))
+                else:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.username))
+
+            for t in thrds:
+                self.channels.append(t.channel)
+
+            #count = 1
+            #for c in self.channels:
+                #print (count,"username '",c.username,"' alias'",c.alias,"'",len(c.videos))
+                #count += 1
+#
+            #sys.exit(0)
+
+            conn.close()
+            self._motd(loaded)
+
+        else:
+            c.execute(
+                '''CREATE TABLE Channel (Username text, Alias text, Description text);'''
+            )
+            conn.commit()
+
+            c.execute(
+                '''CREATE TABLE Channel (Url text, Name text, Description text, Channel text);'''
+            )
+
+            conn.commit()
+
+            conn.close()
+            self._motd()
+
+    def preloop_old(self):
         if os.path.exists(self.paths["channels_list"]):
             print ("Loading Youtube Channels videos")
 
@@ -426,10 +302,10 @@ class OgayaCLI(cmd.Cmd):
         channels = []
 
         for channel in self.channels:
-            if channel.alias is None:
-                channels.append(channel.username)
-            else:
+            if channel.alias:
                 channels.append(channel.alias)
+            else:
+                channels.append(channel.username)
 
         channels.sort()
 
@@ -440,10 +316,10 @@ class OgayaCLI(cmd.Cmd):
 
         for channel in self.channels:
             if channel.new_videos:
-                if channel.alias is None:
-                    name = channel.username
-                else:
+                if channel.alias:
                     name = channel.alias
+                else:
+                    name = channel.username
 
                 self.new_videos[name] = []
 
@@ -639,7 +515,7 @@ class OgayaCLI(cmd.Cmd):
             else:
                 self.cd_status = c
 
-                if c.alias is None:
+                if c.alias:
                     self.prompt = "% /{0}/ ".format(c.username)
                 else:
                     self.prompt = "% /{0}/ ".format(c.alias)
@@ -722,7 +598,8 @@ class OgayaCLI(cmd.Cmd):
 if __name__ == "__main__":
     OGAYA_PATHS = {
         "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin())
+        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
+        "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
     }
 
     if not os.path.exists(OGAYA_PATHS["channels_dir"]):
