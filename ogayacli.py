@@ -72,7 +72,7 @@ class ChannelThread(Thread):
                     try_init=False
             )
 
-            self.channel.start_or_refreshL(False)
+            self.channel.start_or_refresh(False)
 
 class OgayaCLI(cmd.Cmd):
     """

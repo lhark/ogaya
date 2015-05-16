@@ -132,7 +132,7 @@ class YoutubeChannel:
 
         return videos
 
-    def start_or_refresh_SQL(self,refresh=True):
+    def start_or_refresh(self,refresh=True):
         videos = self.retrieve_videos()
 
         if videos:
@@ -148,38 +148,6 @@ class YoutubeChannel:
 
             if refresh:
                 self.update("refresh")
-        else:
-            self.update("start")
-
-
-    def start_or_refresh(self):
-        if self.ogaya_paths:
-            channel_file = "{0}{1}.videos".format(
-                    self.ogaya_paths["channels_dir"],
-                    self.username
-            )
-        else:
-            channel_file = "channels/{0}.videos".format(self.username)
-
-        if os.path.exists(channel_file):
-            with open(channel_file,"r") as cf:
-                for line in cf:
-                    line = line.rstrip()
-
-                    if not line.startswith("#"):
-                        sline = line.split("|")
-
-
-                        self.videos.append(
-                                YoutubeVideo(
-                                    url=sline[0],
-                                    name=sline[1]
-                                )
-                        )
-
-            self.set_videos_urls()
-
-            self.update("refresh")
         else:
             self.update("start")
 
