@@ -72,21 +72,7 @@ class ChannelThread(Thread):
                     try_init=False
             )
 
-            self.channel.start_or_refresh_SQL(False)
-
-    #def run(self):
-        #with self.lock:
-            #if self.alias:
-                #self.channel = ogobjects.YoutubeChannel(
-                        #username=self.username,
-                        #alias=self.alias,
-                        #ogaya_paths=self.paths
-                #)
-            #else:
-                #self.channel = ogobjects.YoutubeChannel(
-                        #username=self.username,
-                        #ogaya_paths=self.paths
-                #)
+            self.channel.start_or_refreshL(False)
 
 class OgayaCLI(cmd.Cmd):
     """
@@ -171,13 +157,6 @@ class OgayaCLI(cmd.Cmd):
             for t in thrds:
                 self.channels.append(t.channel)
 
-            #count = 1
-            #for c in self.channels:
-                #print (count,"username '",c.username,"' alias'",c.alias,"'",len(c.videos))
-                #count += 1
-#
-            #sys.exit(0)
-
             conn.close()
             self._motd(loaded)
 
@@ -194,79 +173,6 @@ class OgayaCLI(cmd.Cmd):
             conn.commit()
 
             conn.close()
-            self._motd()
-
-    def preloop_old(self):
-        if os.path.exists(self.paths["channels_list"]):
-            print ("Loading Youtube Channels videos")
-
-            load_lock = RLock()
-
-            thrds = []
-
-            with open(self.paths["channels_list"],"r") as cl:
-
-                total = 0
-
-                for line in cl:
-                    if not line.startswith("#"):
-                        total += 1
-                        line = line.rstrip()
-
-                        if "|" in line:
-                            sline = line.split("|")
-
-                            user, alias = sline[0], sline[1]
-
-                            if not user in self.channels_ids:
-                                self.channels_ids.append(user)
-
-                                thrds.append(
-                                        ChannelThread(
-                                            load_lock,
-                                            user,
-                                            self.paths,
-                                            alias
-                                        )
-                                )
-
-                                thrds[-1].start()
-
-                        else:
-                            if not line in self.channels_ids:
-                                self.channels_ids.append(line)
-
-                                thrds.append(
-                                        ChannelThread(
-                                            load_lock,
-                                            line,
-                                            self.paths
-                                        )
-                                )
-
-                                thrds[-1].start()
-
-            loaded = 0
-
-            for t in thrds:
-                t.join()
-
-                loaded += 1
-
-                align = int(len(str(total)) - len(str(loaded))) * "0"
-
-                if t.alias:
-                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.alias))
-                else:
-                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.username))
-
-            for t in thrds:
-                self.channels.append(t.channel)
-
-            self._update_videos()
-
-            self._motd(loaded)
-        else:
             self._motd()
 
     def postloop(self): pass

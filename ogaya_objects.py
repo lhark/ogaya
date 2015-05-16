@@ -63,7 +63,7 @@ class YoutubeChannel:
     def __str__(self):
         return "{0} channel".format(self.username)
 
-    def save_channel_file_sql(self):
+    def save_channel_file(self):
         if self.ogaya_paths:
             db = self.ogaya_paths["db"]
         else:
@@ -104,22 +104,6 @@ class YoutubeChannel:
                 conn.commit()
 
         conn.close()
-
-    def save_channel_file(self):
-        if self.ogaya_paths:
-            channel_file = "{0}{1}.videos".format(
-                    self.ogaya_paths["channels_dir"],
-                    self.username
-            )
-        else:
-            channel_file = "channels/{0}.videos".format(self.username)
-
-        if os.path.exists(os.path.realpath(channel_file)):
-            os.remove(os.path.realpath(channel_file))
-
-        with open(channel_file,"w") as cf:
-            for video in self.videos:
-                cf.write("{0}|{1}\n".format(video.url,video.name))
 
     def set_videos_urls(self):
         self.videos_urls = []
@@ -163,9 +147,9 @@ class YoutubeChannel:
                     self.videos.append(vo)
 
             if refresh:
-                self.update_sql("refresh")
+                self.update("refresh")
         else:
-            self.update_sql("start")
+            self.update("start")
 
 
     def start_or_refresh(self):
@@ -198,95 +182,6 @@ class YoutubeChannel:
             self.update("refresh")
         else:
             self.update("start")
-
-    def update_sql(self,mode="start", gui=True):
-        def _add_videos(obj,mode):
-            feed = ogutils.get_urls(obj.username,"videos")
-
-            if feed:
-                html = feed["content"]
-                page = feed["page"]
-                tempfile = feed["tempfile"]
-
-                parser = ogparsers.YTParser()
-
-                for v in parser.get_videos(html):
-                    if mode == "start":
-                        obj.videos.append(v)
-                    elif mode == "refresh":
-                        if not v.url in obj.videos_urls:
-                            obj.videos.append(v)
-                            obj.new_videos.append(v)
-                    else:
-                        raise ValueError(
-                            "Invalid YoutubeChannel.update() mode:{0}".format(mode)
-                        )
-
-                del(parser)
-                os.remove(tempfile)
-
-                success = True
-            else:
-                success = False
-
-            return success,obj
-
-        def _set_description(obj):
-            feed = ogutils.get_urls(obj.username,"description")
-            html = feed["content"]
-
-            aboutparser = ogparsers.AboutParser()
-            description = aboutparser.get_description(html)
-
-            obj.description = description
-
-            return obj
-
-        if not self.username is None:
-            feed,self = _add_videos(self,mode)
-
-            if feed:
-                self.set_videos_urls()
-                self = _set_description(self)
-
-                if mode == "start":
-                    self.save_channel_file_sql()
-
-                if gui:
-                    pic = ogutils.get_urls(self.username,"avatar")
-
-                    if pic:
-                        self.have_avatar = True
-
-                        if self.ogaya_paths:
-                            target = "{0}{1}.{2}".format(
-                                    self.ogaya_paths["channels_dir"],
-                                    self.username,
-                                    pic.split(".")[-1]
-                            )
-                        else:
-                            target = "channels/{0}.{1}".format(
-                                    self.username,
-                                    pic.split(".")[-1]
-                            )
-
-                        ogutils.download(pic,target)
-                    else:
-                        self.have_avatar = False
-
-                else:
-                    self.have_avatar = False
-
-                self.valid = True
-
-            else:
-                self.valid = False
-
-                print (
-                        "This channel/user '{0}' doesn't exist.".format(
-                            self.username
-                        )
-                )
 
     def update(self,mode="start", gui=True):
         def _add_videos(obj,mode):
