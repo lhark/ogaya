@@ -7,6 +7,8 @@
 
 import os
 
+import sqlite3
+
 import ogaya_parsers as ogparsers
 import ogaya_utils as ogutils
 
@@ -17,7 +19,11 @@ __author__ = "Etienne Nadji <etnadji@eml.cc>"
 # Classes ===============================================================#
 
 class YoutubeChannel:
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
+        """
+        Youtube Channel object.
+        """
+
         self.videos = []
 
         self.new_videos = []
@@ -74,6 +80,32 @@ class YoutubeChannel:
             if not video.url is None:
                 self.videos_urls.append(video.url)
 
+    def start_or_refresh_SQL(self):
+        if self.ogaya_paths:
+            db = self.ogaya_paths["db"]
+        else:
+            channel_file = "data.db"
+
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+
+        c.execute(
+                "SELECT * FROM Videos WHERE Channel='{0}'".format(
+                    self.username
+                )
+        )
+        videos = c.fetchall()
+
+        conn.close()
+
+        print (videos)
+
+        if videos:
+            self.update_sql("refresh")
+        else:
+            self.update_sql("start")
+
+
     def start_or_refresh(self):
         if self.ogaya_paths:
             channel_file = "{0}{1}.videos".format(
@@ -105,7 +137,7 @@ class YoutubeChannel:
         else:
             self.update("start")
 
-    def update(self,mode="start",gui=True):
+    def update(self,mode="start", gui=True):
         def _add_videos(obj,mode):
             feed = ogutils.get_urls(obj.username,"videos")
 
@@ -194,14 +226,50 @@ class YoutubeChannel:
                         )
                 )
 
+    def to_SQL(self,db):
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+        c.execute(
+                "INSERT INTO Channel VALUES ('{0}','{1}','{2}')".format(
+                    self.username,
+                    self.alias,
+                    self.description
+                )
+        )
+        conn.commit()
+        conn.close()
+
 class YoutubeVideo:
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         self.url = None
         self.name = None
+        self.description = None
+
+        self.channel = None
 
         for key in kwargs:
-            if key == "url":self.url = kwargs[key]
-            if key == "name":self.name = kwargs[key]
+            if key == "url":
+                self.url = kwargs[key]
+            if key == "name":
+                self.name = kwargs[key]
+            if key == "description":
+                self.description = kwargs[key]
+            if key == "channel":
+                self.channel = kwargs[key].username
+
+    def to_SQL(self, db):
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+        c.execute(
+                "INSERT INTO Videos VALUES ('{0}','{1}','{2}','{3}')".format(
+                    self.url,
+                    self.name,
+                    self.description,
+                    self.channel
+                )
+        )
+        conn.commit()
+        conn.close()
 
     def __str__(self):
         return "{0} − {1}".format(self.name,self.url)
