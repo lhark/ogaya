@@ -18,6 +18,9 @@ __author__ = "Etienne Nadji <etnadji@eml.cc>"
 
 # Fonctions =============================================================#
 
+def get_base_ogaya_path():
+    return "/home/{0}/.config/ogaya/".format(os.getlogin())
+
 def get_ogaya_paths():
     return {
         "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),

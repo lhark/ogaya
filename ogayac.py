@@ -121,9 +121,7 @@ class OgayaCLI(cmd.Cmd):
             total = len(channels)
 
             load_lock = RLock()
-
             thrds = []
-
 
             for channel in channels:
                 if not channel["username"] in self.channels_ids:

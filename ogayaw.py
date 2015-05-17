@@ -14,8 +14,11 @@ Google account.
 
 import os
 import sys
-
 import webbrowser
+
+import sqlite3
+
+from threading import Thread, RLock
 
 import ogaya_parsers as ogparsers
 import ogaya_objects as ogobjects
@@ -26,6 +29,47 @@ import ogaya_utils as ogutils
 __author__ = "Etienne Nadji <etnadji@eml.cc>"
 
 # Classes ===============================================================#
+
+class ChannelThread(Thread):
+    def __init__(self, **kwargs):
+        Thread.__init__(self)
+
+        self.username = ''
+        self.alias = ''
+        self.description = ''
+
+        self.paths = {}
+        self.lock = None
+
+        self.channel = None
+
+        for key in kwargs:
+            if key == "lock":
+                self.lock = kwargs[key]
+
+            if key == "username":
+                self.username = kwargs[key]
+
+            if key == "alias":
+                self.alias = kwargs[key]
+
+            if key == "description":
+                self.description = kwargs[key]
+
+            if key == "paths":
+                self.paths = kwargs[key]
+
+    def run(self):
+        with self.lock:
+            self.channel = ogobjects.YoutubeChannel(
+                    username=self.username,
+                    alias=self.alias,
+                    description=self.description,
+                    ogaya_paths=self.paths,
+                    try_init=False
+            )
+
+            self.channel.start_or_refresh(False)
 
 class HTMLRender:
     def __init__(self,paths):
@@ -181,45 +225,61 @@ class HTMLRender:
             self.render()
 
     def update_channels(self):
-        if os.path.exists(self.paths["channels_list"]):
-            print ("Loading Youtube Channels videos")
+        db = self.paths["db"]
 
-            with open(self.paths["channels_list"],"r") as cl:
-                loaded = 0
+        if os.path.exists(db):
+            conn = sqlite3.connect(db)
+            c = conn.cursor()
 
-                for line in cl:
-                    line = line.rstrip()
+            c.execute("SELECT * FROM Channel")
+            cln = c.fetchall()
 
-                    if not line in self.channels_ids:
-                        if "|" in line:
-                            sline = line.split("|")
+            channels = [
+                {"username":cn[0],"alias":cn[1],"description":cn[2]} for cn in cln
+            ]
+            total = len(channels)
 
-                            user,alias = sline[0],sline[1]
+            load_lock = RLock()
+            thrds = []
 
-                            self.channels.append(
-                                    ogobjects.YoutubeChannel(
-                                        username=user,
-                                        alias=alias,
-                                        ogaya_paths=self.paths
-                                    )
+            for channel in channels:
+                if not channel["username"] in self.channels_ids:
+                    self.channels_ids.append(channel["username"])
+
+                    thrds.append(
+                            ChannelThread(
+                                lock=load_lock,
+                                username=channel["username"],
+                                paths=self.paths,
+                                alias=channel["alias"],
+                                description=channel["description"]
                             )
+                    )
 
-                        else:
-                            self.channels.append(
-                                    ogobjects.YoutubeChannel(
-                                        username=line,
-                                        ogaya_paths=self.paths
-                                    )
-                            )
+                    thrds[-1].start()
 
-                        self.channels[-1].start_or_refresh()
+            loaded = 0
 
-                        loaded += 1
-                        print ("Loaded: {0}".format(loaded))
+            for t in thrds:
+                t.join()
+
+                loaded += 1
+
+                align = int(len(str(total)) - len(str(loaded))) * "0"
+
+                if t.alias:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.alias))
+                else:
+                    print ("{0}{1} / {2} - {3}".format(align, loaded,total, t.username))
+
+            for t in thrds:
+                self.channels.append(t.channel)
+
+            conn.close()
 
             self.updated = True
-
             return self.channels
+
         else:
             return False
 
@@ -229,21 +289,17 @@ class HTMLRender:
 # Programme =============================================================#
 
 if __name__ == "__main__":
-    OGAYA_PATHS = {
-        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
-        "web_dir":"/home/{0}/.config/ogaya/web/".format(os.getlogin())
-    }
-
-    if not os.path.exists(OGAYA_PATHS["channels_dir"]):
-        os.makedirs(OGAYA_PATHS["channels_dir"])
+    OGAYA_PATHS = ogutils.get_ogaya_paths()
+    OGAYA_PATHS["web_dir"] = "{0}ogaweb/".format(ogutils.get_base_ogaya_path())
 
     if not os.path.exists(OGAYA_PATHS["web_dir"]):
         os.makedirs(OGAYA_PATHS["web_dir"])
 
-    if not os.path.exists(OGAYA_PATHS["channels_list"]):
-        with open(OGAYA_PATHS["channels_list"],"w") as cl:
-            cl.write("ARTEplus7")
+    # Clean the web_dir
+    for f in os.listdir(OGAYA_PATHS["web_dir"]):
+        if os.path.isfile(f):
+            if f.endswith(".html"):
+                os.remove("{0}{1}".format(OGAYA_PATHS["web_dir"],f))
 
     ogaya = HTMLRender(OGAYA_PATHS)
     s = ogaya.update_channels()
