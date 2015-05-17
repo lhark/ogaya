@@ -108,10 +108,10 @@ class OgayaCLI(cmd.Cmd):
 
         db = self.paths["db"]
 
-        conn = sqlite3.connect(db)
-        c = conn.cursor()
-
         if os.path.exists(db):
+            conn = sqlite3.connect(db)
+            c = conn.cursor()
+
             c.execute("SELECT * FROM Channel")
             cln = c.fetchall()
 
@@ -162,18 +162,7 @@ class OgayaCLI(cmd.Cmd):
             self._motd(loaded)
 
         else:
-            c.execute(
-                '''CREATE TABLE Channel (Username text, Alias text, Description text);'''
-            )
-            conn.commit()
-
-            c.execute(
-                '''CREATE TABLE Videos (Url text, Name text, Description text, Channel text);'''
-            )
-
-            conn.commit()
-
-            conn.close()
+            ogheadless.new_database(db)
             self._motd()
 
     def postloop(self): pass
@@ -440,18 +429,21 @@ class OgayaCLI(cmd.Cmd):
                     for count,video in enumerate(self.new_videos[line]):
                         print (count+1,"|",video.name)
         else:
-            for news in self.new_videos.items():
-                print ("Channel {0} {1}".format(news[0],30*"-"))
+            if self.new_videos:
+                for news in self.new_videos.items():
+                    print ("Channel {0} {1}".format(news[0],30*"-"))
 
-                for count,video in enumerate(news[1]):
-                    print ("\t{0}".format(video.name))
+                    for count,video in enumerate(news[1]):
+                        print ("\t{0}".format(video.name))
+            else:
+                print ("Nothing!")
 
     def do_ls(self,line):
         """List channels or known episodes of a channel."""
 
         if self._channel_selected():
-            for count,video in enumerate(self.cd_status.videos):
-                print (count+1,"|",video.name)
+            for count, video in enumerate(self.cd_status.videos):
+                print ("{0} | {1}".format(count+1, video.name))
 
         else:
             print(
@@ -461,6 +453,8 @@ class OgayaCLI(cmd.Cmd):
             )
 
     def _complete_channel(self, text, line, begidx, endidx):
+        """Cmd completion function for commands requiring a channel"""
+
         if self._channel_selected():
             return []
         else:
@@ -472,6 +466,8 @@ class OgayaCLI(cmd.Cmd):
             return completions
 
     def _complete_video(self, text, line, begidx, endidx):
+        """Cmd completion function for commands requiring a video"""
+
         if not text:
             if self._channel_selected():
                 completions = [v.name for v in self.cd_status.videos]
@@ -486,17 +482,28 @@ class OgayaCLI(cmd.Cmd):
         return completions
 
     def complete_desc(self, text, line, begidx, endidx):
-        return self._complete_channel(text,line,begidx,endidx)
+        """Cmd Completion function for desc"""
+        return self._complete_channel(text, line, begidx, endidx)
+
     def complete_cd(self, text, line, begidx, endidx):
-        return self._complete_channel(text,line,begidx,endidx)
+        """Cmd Completion function for cd"""
+        return self._complete_channel(text, line, begidx, endidx)
+
     def complete_whatsnew(self, text, line, begidx, endidx):
-        return self._complete_channel(text,line,begidx,endidx)
+        """Cmd Completion function for whatsnew"""
+        return self._complete_channel(text, line, begidx, endidx)
+
     def complete_refresh(self, text, line, begidx, endidx):
-        return self._complete_channel(text,line,begidx,endidx)
+        """Cmd Completion function for refresh"""
+        return self._complete_channel(text, line, begidx, endidx)
+
     def complete_down(self, text, line, begidx, endidx):
-        return self._complete_video(text,line,begidx,endidx)
+        """Cmd Completion function for down"""
+        return self._complete_video(text, line, begidx, endidx)
+
     def complete_add(self, text, line, begidx, endidx):
-        return self._complete_video(text,line,begidx,endidx)
+        """Cmd Completion function for add"""
+        return self._complete_video(text, line, begidx, endidx)
 
 
 # Fonctions =============================================================#

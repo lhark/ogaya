@@ -95,8 +95,6 @@ def new_database(path):
 
     path = os.path.realpath(path)
 
-    print ("path:",path)
-
     if os.path.exists(path):
         raise FileExistsError()
 
@@ -110,7 +108,7 @@ def new_database(path):
         conn.commit()
 
         cursor.execute(
-            '''CREATE TABLE Videos (Url text, Name text, Description text, Channel text);'''
+            '''CREATE TABLE Video (Url text, Name text, Description text, Channel text);'''
         )
 
         conn.commit()
@@ -216,6 +214,10 @@ def update_channel(**kwargs):
 
         channel (string) Youtube ID of the channel, old or new style.
 
+        gui (bool)       If True, updating the channel will download
+                         GUI interfaces intersting files (like avatar
+                         picture of the channel).
+
     Exceptions:
 
         ChannelNotInDatabase is raised... if the channel is not in the 
@@ -249,6 +251,8 @@ def update_channel(**kwargs):
             paths = kwargs[key]
         if key == "channel":
             channel = kwargs[key]
+        if key == "gui":
+            gui = kwargs[key]
 
     if is_cli:
         if not paths:
@@ -257,11 +261,11 @@ def update_channel(**kwargs):
     if channel:
         if _db_has_channel(channel,paths["db"]):
             channel_object = ogobjects.YoutubeChannel(
-                    username=username,
-                    alias=alias,
-                    description=description,
-                    ogaya_paths=paths
+                username=channel,
+                ogaya_paths=paths,
+                try_init=False
             )
+            channel_object.start_or_refresh(refresh=True,gui)
 
             return True
 

@@ -31,6 +31,7 @@ if not os.path.exists(OGAYA_PATHS["channels_dir"]):
 #--- Make a new database -------------------------------------------------------
 
 headless.new_database(OGAYA_PATHS["db"])
+print ("OK - Create a database")
 
 try:
     headless.new_database(OGAYA_PATHS["db"])
@@ -45,6 +46,8 @@ headless.add_channel(
     paths=OGAYA_PATHS
 )
 
+print ("OK - Adding a channel")
+
 try:
     headless.add_channel(
         channel='ARTEplus7',
@@ -58,8 +61,12 @@ except headless.ChannelAlreadyInDatabase:
 
 headless.update_channel(
     channel='ARTEplus7',
+    gui=False,
     paths=OGAYA_PATHS
 )
+print ("OK - Updating channel")
+
+input("Pause - Look if all is good and press ENTER")
 
 #--- Removing channel ----------------------------------------------------------
 
@@ -67,6 +74,7 @@ headless.remove_channel(
     channel='ARTEplus7',
     paths=OGAYA_PATHS
 )
+print ("OK - Remove channel")
 
 try:
     headless.remove_channel(
@@ -74,6 +82,6 @@ try:
         paths=OGAYA_PATHS
     )
 except headless.ChannelNotInDatabase:
-    print ("Channel is not in the database")
+    print ("OK - Channel is not in the database")
 
 # vim:set shiftwidth=4 softtabstop=4:

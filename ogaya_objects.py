@@ -116,7 +116,7 @@ class YoutubeChannel:
         if self.ogaya_paths:
             db = self.ogaya_paths["db"]
         else:
-            channel_file = "data.db"
+            db = "data.db"
 
         conn = sqlite3.connect(db)
         c = conn.cursor()
@@ -132,7 +132,7 @@ class YoutubeChannel:
 
         return videos
 
-    def start_or_refresh(self,refresh=True):
+    def start_or_refresh(self,refresh=True,gui=True):
         videos = self.retrieve_videos()
 
         if videos:
@@ -147,9 +147,9 @@ class YoutubeChannel:
                     self.videos.append(vo)
 
             if refresh:
-                self.update("refresh")
+                self.update("refresh",gui)
         else:
-            self.update("start")
+            self.update("start",gui)
 
     def update(self,mode="start", gui=True):
         def _add_videos(obj,mode):
@@ -161,6 +161,8 @@ class YoutubeChannel:
                 tempfile = feed["tempfile"]
 
                 parser = ogparsers.YTParser()
+
+                self.set_videos_urls()
 
                 for v in parser.get_videos(html):
                     if mode == "start":
