@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 # -*- coding:Utf-8 -*-
 
+# Migration script for those who still use channels.list
+# Will be removed soon
+
 import os
 import sqlite3
 
