@@ -244,6 +244,8 @@ def update_channel(**kwargs):
 
     channel = ''
 
+    gui=True
+
     for key in kwargs:
         if key == "cli":
             is_cli = kwargs[key]
@@ -265,7 +267,7 @@ def update_channel(**kwargs):
                 ogaya_paths=paths,
                 try_init=False
             )
-            channel_object.start_or_refresh(refresh=True,gui)
+            channel_object.start_or_refresh(refresh=True,gui=gui)
 
             return True
 
