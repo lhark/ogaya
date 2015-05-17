@@ -305,7 +305,7 @@ def add_channel(**kwargs):
     Examples:
         On a interface wich define OGAYA_PATHS as global:
 
-            add_new_channel(
+            add_channel(
                 paths=OGAYA_PATHS,
                 channel="UCsqvprYnU8J8K449VAQZhsQ",
                 alias="Videotheque d'Alexandrie"
@@ -313,7 +313,7 @@ def add_channel(**kwargs):
 
         With a dummy paths dictionnary:
 
-            add_new_channel(
+            add_channel(
                 paths={"db":"/home/foobar/.config/ogaya/data.db"},
                 channel="UCsqvprYnU8J8K449VAQZhsQ",
                 alias="Videotheque d'Alexandrie"

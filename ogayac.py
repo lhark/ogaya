@@ -2,7 +2,7 @@
 # -*- coding:Utf-8 -*-
 
 """
-OGAYA − Off-Google-Account Youtube Aggregator.
+OGAYA - Off-Google-Account Youtube Aggregator.
 
 CLI client.
 
@@ -75,12 +75,24 @@ class ChannelThread(Thread):
 
             self.channel.start_or_refresh(False)
 
+
+
 class OgayaCLI(cmd.Cmd):
     """
     OgayaCLI shell.
 
     Availables commands:
-        exit, add, down, downadd, refresh, cd, ls
+        exit
+
+        add
+
+        down, downadd
+
+        refresh
+
+        cd, ls
+
+        add_channel, rm_channel
     """
 
     def __init__(self,paths):
@@ -105,7 +117,6 @@ class OgayaCLI(cmd.Cmd):
         self.cd_status = "@channels"
 
     def preloop(self):
-
         db = self.paths["db"]
 
         if os.path.exists(db):
@@ -157,6 +168,9 @@ class OgayaCLI(cmd.Cmd):
                 self.channels.append(t.channel)
 
             conn.close()
+
+            self._update_videos()
+
             self._motd(loaded)
 
         else:
@@ -164,6 +178,8 @@ class OgayaCLI(cmd.Cmd):
             self._motd()
 
     def postloop(self): pass
+
+
 
     def _motd(self,loaded=0):
         self._clear()
@@ -177,22 +193,29 @@ class OgayaCLI(cmd.Cmd):
 
     def _clear(self): os.system("clear")
 
-    def _find_channel(self,s):
+    def _find_channel(self,channel_id):
+        """
+        Search a channel by its username/alias.
+
+        Return it or None.
+        """
         for channel in self.channels:
-            if s == channel.alias:
+            if channel_id == channel.alias:
                 return channel
-            if s == channel.username:
+            if channel_id == channel.username:
                 return channel
 
         return None
 
     def _channel_selected(self):
+        """Check if a channel is selected."""
         if self.cd_status == "@channels":
             return False
         else:
             return True
 
     def _clever_channels(self):
+        """Produce a clever list of the channels username/alias."""
         channels = []
 
         for channel in self.channels:
@@ -221,6 +244,7 @@ class OgayaCLI(cmd.Cmd):
                     self.new_videos[name].append(video)
 
     def _update_videos(self):
+        """Load videos instances and their names"""
         videos = []
         videos_titles = []
 
@@ -233,6 +257,12 @@ class OgayaCLI(cmd.Cmd):
         self.videos_titles = videos_titles
 
     def _download(self,args,url):
+        """
+        Download a video.
+
+        args: youtube-dl args
+        url:  URL of the video
+        """
         args = ["youtube-dl"] + args + [url]
 
         ret = subprocess.call(
@@ -246,14 +276,86 @@ class OgayaCLI(cmd.Cmd):
         else:
             return True
 
+    def _add_channel(self,channel,alias=''):
+        if channel:
+            ok = False
+
+            #--- Add the channel to the database -------------------------------
+
+            if alias:
+                try:
+                    ogheadless.add_channel(
+                        paths=self.paths,
+                        channel=channel,
+                        alias=alias
+                    )
+
+                    ok = True
+
+                except ogheadless.ChannelAlreadyInDatabase:
+                    print ("This channel is already in the database")
+
+            else:
+                try:
+                    ogheadless.add_channel(
+                        paths=self.paths,
+                        channel=channel,
+                    )
+
+                    ok = True
+
+                except ogheadless.ChannelAlreadyInDatabase:
+                    print ("This channel is already in the database.")
+
+            #--- Update the channel? -------------------------------------------
+
+            if ok:
+                try:
+                    print ("Type ENTER to load immediatly the channel's videos")
+                    print ("Or type CTRL-C.")
+
+                    choice = input("\nENTER / CTRL-C")
+
+                    try:
+                        ogheadless.update_channel(
+                            paths=self.paths,
+                            channel=channel
+                        )
+
+                    except ogheadless.ChannelNotInDatabase:
+                        print ("This channel is not in the database.")
+
+                except KeyboardInterrupt:
+                    pass
+
+                #--- Adding the channel to OgayaCLI interface ----------------------
+
+                if alias:
+                    chan = ogobjects.YoutubeChannel(
+                        username=channel,
+                        alias=alias,
+                        ogaya_paths=self.paths,
+                        try_init=False
+                    )
+                else:
+                    chan = ogobjects.YoutubeChannel(
+                        username=channel,
+                        ogaya_paths=self.paths,
+                        try_init=False
+                    )
+
+                self._update_videos()
+
+
     def do_EOF(self, line):
         """Exit"""
         return True
     def do_licence(self): pass
-
     def do_exit(self,line):
         """Exit OgayaCLI"""
         sys.exit(0)
+
+
 
     def do_add(self,line):
         """Add a download in the queue."""
@@ -356,6 +458,87 @@ class OgayaCLI(cmd.Cmd):
             else:
                 print ("No download scheduled.")
 
+
+
+    def do_add_channel(self,line):
+        """
+        Add a new channel.
+
+        add_channel channel_id
+        add_channel channel_id|alias
+        """
+
+        if line:
+            line = line.strip()
+
+            if "|" in line:
+                sline = line.split("|")
+
+                channel_id, alias = sline[0].strip(), sline[1].strip()
+
+                # A channel_id can't have space, so it is the
+                # channel avatar. channel_id become alias and
+                # alias become channel_id.
+
+                if " " in sline[0]:
+                    channel_id, alias = alias, channel_id
+
+                self._add_channel(channel_id, alias)
+
+            else:
+                self._add_channel(line)
+
+    def do_rm_channel(self,line):
+        """
+        Add a new channel.
+
+        rm_channel channel_id
+        rm_channel channel_alias
+        """
+
+        if line:
+            channel = self._find_channel(line)
+
+            if channel is None:
+                print ("No channel/channel alias named '{0}'.".format(line))
+
+            else:
+                try:
+                    # Remove the channel of the database
+
+                    ogheadless.remove_channel(
+                        paths=self.paths,
+                        channel=channel.username
+                    )
+
+                    # Remove the channel's videos titles of the completions
+
+                    videos_titles = [c.name for c in channel.videos]
+
+                    for vt in videos_titles:
+                        self.videos_titles.remove(vt)
+
+                    # Remove the channel to the channels list
+
+                    self.channels.remove(channel)
+
+                    # Remove the channel to the channels' ID/alias list
+
+                    self.channels_ids.remove(channel.username)
+
+                    # Remove the videos belonging to the channel of the
+                    # download queue.
+
+                    for download in self.queue:
+                        if download.channel == channel.username:
+                            self.queue.remove(download)
+
+                except ogheadless.ChannelNotInDatabase:
+                    print ("This channel is not in the database.")
+
+
+
+
     def do_refresh(self,line):
         """Refresh a channel or all the channels"""
 
@@ -449,6 +632,8 @@ class OgayaCLI(cmd.Cmd):
                         self._clever_channels()
                     )
             )
+
+
 
     def _complete_channel(self, text, line, begidx, endidx):
         """Cmd completion function for commands requiring a channel"""
