@@ -5,13 +5,14 @@
 # Will be removed soon
 
 import os
+from os.path import expanduser
 import sqlite3
 
 if __name__ == "__main__":
 
-    db = "/home/{0}/.config/ogaya/data.db".format(os.getlogin())
-    channels = "/home/{0}/.config/ogaya/channels.list".format(os.getlogin())
-    channels_dir = "/home/{0}/.config/ogaya/channels/".format(os.getlogin())
+    channels = "{0}/.config/ogaya/channels.list".format(expanduser("~"))
+    channels_dir = "{0}/.config/ogaya/channels/".format(expanduser("~"))
+    db = "{0}/.config/ogaya/data.db".format(expanduser("~"))
 
     conn = sqlite3.connect(db)
     c = conn.cursor()

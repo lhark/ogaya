@@ -8,6 +8,7 @@ Ogaya utilitary functions
 # Imports ===============================================================#
 
 import os
+from os.path import expanduser
 import urllib.request
 
 import ogaya_parsers as ogparsers
@@ -19,13 +20,13 @@ __author__ = "Etienne Nadji <etnadji@eml.cc>"
 # Fonctions =============================================================#
 
 def get_base_ogaya_path():
-    return "/home/{0}/.config/ogaya/".format(os.getlogin())
+    return "{0}/.config/ogaya/".format(expanduser("~"))
 
 def get_ogaya_paths():
     return {
-        "channels_list":"/home/{0}/.config/ogaya/channels.list".format(os.getlogin()),
-        "channels_dir":"/home/{0}/.config/ogaya/channels/".format(os.getlogin()),
-        "db":"/home/{0}/.config/ogaya/data.db".format(os.getlogin())
+        "channels_list":"{0}/.config/ogaya/channels.list".format(expanduser("~")),
+        "channels_dir":"{0}/.config/ogaya/channels/".format(expanduser("~")),
+        "db":"{0}/.config/ogaya/data.db".format(expanduser("~"))
     }
 
 def download(url,target):
