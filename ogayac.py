@@ -633,24 +633,35 @@ class OgayaCLI(cmd.Cmd):
                     )
             )
 
-
-
     def _complete_channel(self, text, line, begidx, endidx):
         """Cmd completion function for commands requiring a channel"""
 
+        arg = line.partition(' ')[2]
+        off = len(arg) - len(text)
+        if arg.endswith(' '):
+            text = ' '
+        elif arg.endswith('-'):
+            text = '-'
+        elif arg.endswith('#'):
+            text = '#'
         if self._channel_selected():
             return []
+        if not text:
+            return self._clever_channels()
         else:
-            if not text:
-                completions = self._clever_channels()
-            else:
-                completions = [c for c in self._clever_channels() if c.startswith(text)]
-
-            return completions
+            return [c[off:] for c in self._clever_channels() if c.startswith(arg)]
 
     def _complete_video(self, text, line, begidx, endidx):
         """Cmd completion function for commands requiring a video"""
 
+        arg = line.partition(' ')[2]
+        off = len(arg) - len(text)
+        if arg.endswith(' '):
+            text = ' '
+        elif arg.endswith('-'):
+            text = '-'
+        elif arg.endswith('#'):
+            text = '#'
         if not text:
             if self._channel_selected():
                 completions = [v.name for v in self.cd_status.videos]
@@ -658,9 +669,9 @@ class OgayaCLI(cmd.Cmd):
                 completions = self.videos_titles
         else:
             if self._channel_selected():
-                completions = [v.name for v in self.cd_status.videos if v.name.startswith(text)]
+                completions = [v.name[off:] for v in self.cd_status.videos if v.name.startswith(arg)]
             else:
-                completions = [v for v in self.videos_titles if v.startswith(text)]
+                completions = [v[off:] for v in self.videos_titles if v.startswith(arg)]
 
         return completions
 
