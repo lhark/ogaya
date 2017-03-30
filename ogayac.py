@@ -116,6 +116,18 @@ class OgayaCLI(cmd.Cmd):
 
         self.cd_status = "@channels"
 
+    def cmdloop(self, *args, **kwargs):
+        """
+        Overwrite cmdloop just to redefine the input function in order
+        to gracefully handle Ctrl-C
+        """
+        old_input_fn = cmd.__builtins__['input']
+        cmd.__builtins__['input'] = input_swallowing_interrupt(old_input_fn)
+        try:
+            super().cmdloop(*args, **kwargs)
+        finally:
+            cmd.__builtins__['input'] = old_input_fn
+
     def preloop(self):
         db = self.paths["db"]
 
@@ -701,6 +713,17 @@ class OgayaCLI(cmd.Cmd):
 
 
 # Fonctions =============================================================#
+
+def input_swallowing_interrupt(_input):
+    def _input_swallowing_interrupt(*args):
+        try:
+            return _input(*args)
+        except KeyboardInterrupt:
+            print('^C')
+            return '\n'
+    return _input_swallowing_interrupt
+
+
 # Programme =============================================================#
 
 if __name__ == "__main__":
