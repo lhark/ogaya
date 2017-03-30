@@ -28,18 +28,14 @@ if __name__ == "__main__":
                 username, alias = sline[0], sline[1]
 
                 c.execute(
-                        "SELECT * FROM Channel WHERE Username='{0}'".format(
-                            username
-                        )
+                        "SELECT * FROM Channel WHERE Username=(?)", (username,)
                 )
                 users = c.fetchall()
 
                 if not users:
                     c.execute(
-                            "INSERT INTO Channel VALUES ('{0}','{1}','')".format(
-                                username,
-                                alias
-                            )
+                            "INSERT INTO Channel VALUES (?,?,?)",
+                            (username, alias, "")
                     )
                     conn.commit()
 
@@ -47,17 +43,13 @@ if __name__ == "__main__":
 
             else:
                 c.execute(
-                        "SELECT * FROM Channel WHERE Username='{0}'".format(
-                            line
-                        )
+                        "SELECT * FROM Channel WHERE Username=(?)", (line,)
                 )
                 users = c.fetchall()
 
                 if not users:
                     c.execute(
-                            "INSERT INTO Channel VALUES ('{0}','','')".format(
-                                line
-                            )
+                            "INSERT INTO Channel VALUES (?,?,?)", (line, "", "")
                     )
                     conn.commit()
 
@@ -72,9 +64,7 @@ if __name__ == "__main__":
                 username = f.split(".videos")[0]
 
                 c.execute(
-                        "SELECT * FROM Video WHERE Channel='{0}'".format(
-                            username
-                        )
+                        "SELECT * FROM Video WHERE Channel=(?)", (username,)
                 )
                 videos = c.fetchall()
 
@@ -90,11 +80,8 @@ if __name__ == "__main__":
                             print (url,name)
 
                             c.execute(
-                                    'INSERT INTO Video VALUES ("{0}","{1}","","{2}")'.format(
-                                        url,
-                                        name,
-                                        username,
-                                    )
+                                    'INSERT INTO Video VALUES (?,?,?,?)',
+                                    (url, name, "", username)
                             )
                             conn.commit()
 

@@ -72,33 +72,26 @@ class YoutubeChannel:
         conn = sqlite3.connect(db)
         c = conn.cursor()
 
-
         c.execute(
-                "SELECT * FROM Channel WHERE Username='{0}'".format(
-                    self.username
-                )
+                "SELECT * FROM Channel WHERE Username=(?)", (self.username,)
         )
         users = c.fetchall()
 
         if not users:
             c.execute(
-                    "INSERT INTO Channel VALUES ('{0}','{1}','')".format(
-                        self.username,
-                        self.alias
-                    )
+                    "INSERT INTO Channel VALUES (?,?,?)",
+                    (self.username, self.alias, "")
             )
             conn.commit()
 
         for video in self.videos:
-            c.execute("SELECT * FROM Video WHERE Url='{0}'".format(video.url))
+            c.execute("SELECT * FROM Video WHERE Url=(?)", (video.url,))
             in_db = c.fetchall()
 
             if not in_db:
                 c.execute(
-                    'INSERT INTO Video VALUES ("{0}","{1}","","{2}")'.format(
-                        video.url,
-                        video.name,
-                        self.username)
+                    'INSERT INTO Video VALUES (?,?,?,?)',
+                    (video.url, video.name, "", self.username)
                 )
 
                 conn.commit()
@@ -122,9 +115,8 @@ class YoutubeChannel:
         c = conn.cursor()
 
         c.execute(
-                "SELECT * FROM Video WHERE Channel='{0}'".format(
-                    self.username
-                )
+                "SELECT * FROM Video WHERE Channel=(?)",
+                (self.username,)
         )
         videos = c.fetchall()
 
@@ -246,11 +238,8 @@ class YoutubeChannel:
         conn = sqlite3.connect(db)
         c = conn.cursor()
         c.execute(
-                "INSERT INTO Channel VALUES ('{0}','{1}','{2}')".format(
-                    self.username,
-                    self.alias,
-                    self.description
-                )
+                "INSERT INTO Channel VALUES (?,?,?)",
+                (self.username, self.alias, self.description)
         )
         conn.commit()
         conn.close()
@@ -277,12 +266,8 @@ class YoutubeVideo:
         conn = sqlite3.connect(db)
         c = conn.cursor()
         c.execute(
-                "INSERT INTO Videos VALUES ('{0}','{1}','{2}','{3}')".format(
-                    self.url,
-                    self.name,
-                    self.description,
-                    self.channel
-                )
+                "INSERT INTO Videos VALUES (?,?,?,?)",
+                (self.url, self.name, self.description, self.channel)
         )
         conn.commit()
         conn.close()

@@ -53,20 +53,13 @@ def _db_has_channel(channel,db):
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
 
-    cursor.execute(
-            "SELECT * FROM Channel WHERE Username='{0}'".format(
-                channel
-            )
-    )
+    cursor.execute("SELECT * FROM Channel WHERE Username=(?)", (channel,))
 
     in_database = cursor.fetchall()
 
     conn.close()
 
-    if in_database:
-        return True
-    else:
-        return False
+    return bool(in_database)
 
 # Fonctions =============================================================#
 
@@ -169,36 +162,27 @@ def remove_channel(**kwargs):
         if not paths:
             paths = OGAYA_PATHS
 
-    if channel:
-        if _db_has_channel(channel,paths["db"]):
-            conn = sqlite3.connect(paths["db"])
-            cursor = conn.cursor()
+    if not channel:
+        return False
 
-            # Delete all the videos of the channel
-            cursor.execute(
-                    'DELETE FROM Video WHERE Channel="{0}";'.format(
-                            channel
-                        )
-            )
-            conn.commit()
+    if _db_has_channel(channel, paths["db"]):
+        conn = sqlite3.connect(paths["db"])
+        cursor = conn.cursor()
 
-            # Delete the channel
-            cursor.execute(
-                    'DELETE FROM Channel WHERE Username="{0}";'.format(
-                            channel
-                        )
-            )
-            conn.commit()
+        # Delete all the videos of the channel
+        cursor.execute('DELETE FROM Video WHERE Channel=(?)', (channel,))
+        conn.commit()
 
-            conn.close()
+        # Delete the channel
+        cursor.execute('DELETE FROM Channel WHERE Username=(?)', (channel,))
+        conn.commit()
 
-            return True
+        conn.close()
 
-        else:
-            raise ChannelNotInDatabase()
+        return True
 
     else:
-        return False
+        raise ChannelNotInDatabase()
 
 
 def update_channel(**kwargs):
@@ -260,22 +244,21 @@ def update_channel(**kwargs):
         if not paths:
             paths = OGAYA_PATHS
 
-    if channel:
-        if _db_has_channel(channel,paths["db"]):
-            channel_object = ogobjects.YoutubeChannel(
-                username=channel,
-                ogaya_paths=paths,
-                try_init=False
-            )
-            channel_object.start_or_refresh(refresh=True,gui=gui)
+    if not channel:
+        return False
 
-            return True
+    if _db_has_channel(channel, paths["db"]):
+        channel_object = ogobjects.YoutubeChannel(
+            username=channel,
+            ogaya_paths=paths,
+            try_init=False
+        )
+        channel_object.start_or_refresh(refresh=True, gui=gui)
 
-        else:
-            raise ChannelNotInDatabase()
+        return True
 
     else:
-        return False
+        raise ChannelNotInDatabase()
 
 
 def add_channel(**kwargs):
@@ -339,34 +322,31 @@ def add_channel(**kwargs):
         if not paths:
             paths = OGAYA_PATHS
 
-    if channel:
-        if _db_has_channel(channel,paths["db"]):
-            raise ChannelAlreadyInDatabase()
+    if not channel:
+        return False
 
-        else:
-            conn = sqlite3.connect(paths["db"])
-            cursor = conn.cursor()
-
-            if alias:
-                cursor.execute(
-                        "INSERT INTO Channel VALUES ('{0}','{1}','')".format(
-                            channel, alias
-                        )
-                )
-            else:
-                cursor.execute(
-                        "INSERT INTO Channel VALUES ('{0}','','')".format(
-                            channel
-                        )
-                )
-
-            conn.commit()
-            conn.close()
-
-            return True
+    if _db_has_channel(channel, paths["db"]):
+        raise ChannelAlreadyInDatabase()
 
     else:
-        return False
+        conn = sqlite3.connect(paths["db"])
+        cursor = conn.cursor()
+
+        if alias:
+            cursor.execute(
+                    "INSERT INTO Channel VALUES (?,?,?)",
+                    (channel, alias, "")
+            )
+        else:
+            cursor.execute(
+                    "INSERT INTO Channel VALUES (?,?,?)",
+                    (channel, "", "")
+            )
+
+        conn.commit()
+        conn.close()
+
+        return True
 
 # Programme =============================================================#
 
@@ -401,7 +381,7 @@ if __name__ == "__main__":
 
         #--- Update a channel --------------------------------------------------
 
-        if operation == "update_channel":
+        elif operation == "update_channel":
             if arguments["<channel_id>"]:
                 try:
                     update_channel(
@@ -416,7 +396,7 @@ if __name__ == "__main__":
 
         #--- Add a channel -----------------------------------------------------
 
-        if operation == "add_channel":
+        elif operation == "add_channel":
 
             if arguments["<channel_id>"]:
                 if arguments["--alias"] is None:
@@ -439,7 +419,7 @@ if __name__ == "__main__":
 
         #--- Make a new database -----------------------------------------------
 
-        if operation == "new_database":
+        elif operation == "new_database":
 
             if arguments["--path"] is None:
                 path = OGAYA_PATHS["db"]
