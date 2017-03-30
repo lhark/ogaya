@@ -470,9 +470,33 @@ class OgayaCLI(cmd.Cmd):
             else:
                 print ("No download scheduled.")
 
+    def do_watch(self, line):
+        """
+        Watch a video using mpv
+        """
+        if line:
+            url = False
 
+            if self._channel_selected():
+                titles = [v.name for v in self.cd_status.videos]
 
-    def do_add_channel(self,line):
+                if line in titles:
+                    for v in self.cd_status.videos:
+                        if line == v.name:
+                            url = v.url
+                            break
+            else:
+                if line in self.videos_titles:
+                    for v in self.videos_titles:
+                        if line == v.name:
+                            url = v.url
+                            break
+
+            if url:
+                print ("Watching '{0}'".format(line))
+                subprocess.call(["mpv", url])
+
+    def do_add_channel(self, line):
         """
         Add a new channel.
 
@@ -709,6 +733,14 @@ class OgayaCLI(cmd.Cmd):
 
     def complete_add(self, text, line, begidx, endidx):
         """Cmd Completion function for add"""
+        return self._complete_video(text, line, begidx, endidx)
+
+    def complete_rm_channel(self, text, line, begidx, endidx):
+        """Cmd Completion function for rm_channel"""
+        return self._complete_channel(text, line, begidx, endidx)
+
+    def complete_watch(self, text, line, begidx, endidx):
+        """Cmd Completion function for watch"""
         return self._complete_video(text, line, begidx, endidx)
 
 
