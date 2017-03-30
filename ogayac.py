@@ -373,7 +373,7 @@ class OgayaCLI(cmd.Cmd):
         """Add a download in the queue."""
         video = None
 
-        for vq in self.queue:
+        for v in self.queue:
             if v.name == line:
                 print ("This video is already in the queue.")
                 break
